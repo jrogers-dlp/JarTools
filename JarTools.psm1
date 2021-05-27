@@ -36,7 +36,7 @@ function New-SecurePassword {
 function New-SSMSession {
     [CmdletBinding()]
     param (
-        [Parameter()]
+        [Parameter(Mandatory = $true)]
         [string]
         $instanceID,
 
@@ -48,18 +48,29 @@ function New-SSMSession {
         $remoteport = "3389",
         [Parameter()]
         [string]
-        $awsprofile
+        $awsprofile = "default"
     )
 
-    if ($awsprofile -ne $null) {
-        aws ssm start-session --target $instanceID --document-name AWS-StartPortForwardingSession --parameters "localPortNumber=$localport,portNumber=$remoteport" --profile $awsprofile
-    }else {
-        aws ssm start-session --target $instanceID --document-name AWS-StartPortForwardingSession --parameters "localPortNumber=$localport,portNumber=$remoteport"
-    }
+    aws ssm start-session --target $instanceID --document-name AWS-StartPortForwardingSession --parameters "localPortNumber=$localport,portNumber=$remoteport" --profile $awsprofile
 
 }
 
-function Translate-ImmutableID {
+function Connect-EC2Instance {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Name,
+
+        [Parameter()]
+        [string]
+        $awsprofile = "default"
+    )
+    $instanceID = (Get-EC2Tag -Filter @{Name="tag:Name";Values="$Name"}).ResourceId | Where {$_ -like "i-*"}
+    mstsc /v:localhost:55678
+    New-SSMSession -instanceID $instanceID -awsprofile $awsprofile
+}
+function Convert-ImmutableID {
     <#
 
         converts decimal value of ms-DS-ConsistencyGuid or ObjectGUID to HEX, ImmutableID, DN and GUID-format.
